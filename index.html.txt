@@ -1,0 +1,482 @@
+<title>아르바이트 급여 계산기</title>
+<style>
+  :root{
+    --bg:#F7F5F1;
+    --surface:#FFFFFF;
+    --surface-2:#F0EDE7;
+    --ink:#22201C;
+    --muted:#726C62;
+    --line:rgba(34,32,28,0.13);
+    --accent:#2F4B7C;
+    --accent-soft:#E7ECF4;
+    --accent-ink:#1F3457;
+    --success:#2E7D4F;
+    --success-soft:#E3F1E8;
+    --neutral-pill:#8A8478;
+    --neutral-pill-soft:#EFEBE3;
+    --danger:#A4402D;
+    --danger-soft:#F5E7E2;
+    --shadow:0 1px 2px rgba(34,32,28,0.06), 0 6px 20px -8px rgba(34,32,28,0.12);
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#17181A;
+      --surface:#1E2023;
+      --surface-2:#242629;
+      --ink:#ECE9E2;
+      --muted:#9C978C;
+      --line:rgba(236,233,226,0.14);
+      --accent:#8AA9DE;
+      --accent-soft:rgba(138,169,222,0.14);
+      --accent-ink:#D3E0F5;
+      --success:#79C596;
+      --success-soft:rgba(121,197,150,0.14);
+      --neutral-pill:#9C978C;
+      --neutral-pill-soft:rgba(156,151,140,0.14);
+      --danger:#E08669;
+      --danger-soft:rgba(224,134,105,0.14);
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17181A; --surface:#1E2023; --surface-2:#242629; --ink:#ECE9E2; --muted:#9C978C;
+    --line:rgba(236,233,226,0.14); --accent:#8AA9DE; --accent-soft:rgba(138,169,222,0.14);
+    --accent-ink:#D3E0F5; --success:#79C596; --success-soft:rgba(121,197,150,0.14);
+    --neutral-pill:#9C978C; --neutral-pill-soft:rgba(156,151,140,0.14);
+    --danger:#E08669; --danger-soft:rgba(224,134,105,0.14);
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.5);
+  }
+  :root[data-theme="light"]{
+    --bg:#F7F5F1; --surface:#FFFFFF; --surface-2:#F0EDE7; --ink:#22201C; --muted:#726C62;
+    --line:rgba(34,32,28,0.13); --accent:#2F4B7C; --accent-soft:#E7ECF4; --accent-ink:#1F3457;
+    --success:#2E7D4F; --success-soft:#E3F1E8; --neutral-pill:#8A8478; --neutral-pill-soft:#EFEBE3;
+    --danger:#A4402D; --danger-soft:#F5E7E2;
+    --shadow:0 1px 2px rgba(34,32,28,0.06), 0 6px 20px -8px rgba(34,32,28,0.12);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',-apple-system,BlinkMacSystemFont,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:920px; margin:0 auto; padding:40px 20px 80px;}
+
+  .masthead{margin-bottom:28px;}
+  .eyebrow{
+    font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 8px;
+  }
+  h1{font-size:clamp(26px,4vw,34px); font-weight:700; letter-spacing:-0.01em; margin:0 0 10px; text-wrap:balance;}
+  .lede{color:var(--muted); font-size:15px; line-height:1.6; max-width:60ch; margin:0;}
+
+  .panel{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+
+  .settings-bar{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1px;
+    background:var(--line); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; margin-bottom:20px;
+  }
+  .field{background:var(--surface); padding:14px 16px;}
+  .field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600;}
+  .field input{
+    width:100%; border:none; background:transparent; font-size:16px; color:var(--ink);
+    font-variant-numeric:tabular-nums; padding:0; font-family:inherit;
+  }
+  .field input:focus{outline:none;}
+  .field input[type="number"]{font-weight:700;}
+
+  .summary-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px;
+    margin-bottom:28px;
+  }
+  .stat{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .stat .label{font-size:12px; color:var(--muted); font-weight:600; margin-bottom:8px;}
+  .stat .value{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-0.01em;}
+  .stat .value small{font-size:13px; font-weight:500; color:var(--muted); margin-left:2px;}
+  .stat.accent{background:var(--accent-soft);}
+  .stat.accent .value{color:var(--accent-ink);}
+
+  .pill{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:99px;
+    letter-spacing:0.02em;
+  }
+  .pill.success{background:var(--success-soft); color:var(--success);}
+  .pill.neutral{background:var(--neutral-pill-soft); color:var(--neutral-pill);}
+  .pill.danger{background:var(--danger-soft); color:var(--danger);}
+
+  .section-title{
+    font-size:13px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--muted); margin:32px 0 12px;
+  }
+
+  .severance-panel{padding:18px 20px; margin-bottom:28px;}
+  .severance-panel .row{display:flex; justify-content:space-between; align-items:baseline; padding:6px 0; font-size:14px; border-bottom:1px dashed var(--line);}
+  .severance-panel .row:last-child{border-bottom:none;}
+  .severance-panel .row .k{color:var(--muted);}
+  .severance-panel .row .v{font-variant-numeric:tabular-nums; font-weight:600;}
+  .severance-panel .headline{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .severance-panel .headline .amount{font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--accent-ink);}
+
+  .months{display:flex; flex-direction:column; gap:16px;}
+  .month-card{padding:18px 20px 16px;}
+  .month-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px;}
+  .month-head input[type="month"]{
+    font-size:17px; font-weight:700; border:none; background:transparent; color:var(--ink);
+    font-family:inherit; padding:0;
+  }
+  .month-head input[type="month"]:focus{outline:none;}
+  .month-total-inline{font-size:14px; font-weight:600; color:var(--accent-ink); font-variant-numeric:tabular-nums;}
+
+  .table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px;}
+  table{width:100%; border-collapse:collapse; min-width:600px;}
+  thead th{
+    background:var(--surface-2); font-size:11px; color:var(--muted); font-weight:700;
+    text-transform:uppercase; letter-spacing:0.04em; text-align:right; padding:9px 10px;
+    border-bottom:1px solid var(--line); white-space:nowrap;
+  }
+  thead th:first-child, thead th:nth-child(2){text-align:left;}
+  tbody td{
+    padding:7px 10px; border-bottom:1px solid var(--line); text-align:right;
+    font-variant-numeric:tabular-nums; font-size:14px;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody td:first-child{text-align:left; color:var(--muted); font-size:13px;}
+  tbody input{
+    width:64px; text-align:right; border:1px solid var(--line); border-radius:6px;
+    padding:5px 7px; font-size:14px; background:var(--bg); color:var(--ink);
+    font-variant-numeric:tabular-nums; font-family:inherit;
+  }
+  tbody input:focus{outline:2px solid var(--accent); outline-offset:-1px;}
+  td.derived{font-weight:600;}
+  td.remove{text-align:center;}
+  .icon-btn{
+    border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:16px;
+    line-height:1; padding:4px 6px; border-radius:6px;
+  }
+  .icon-btn:hover{background:var(--danger-soft); color:var(--danger);}
+
+  .card-footer{display:flex; justify-content:space-between; align-items:center; margin-top:12px;}
+  .btn{
+    border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer;
+    font-size:13px; font-weight:600; padding:7px 14px; border-radius:8px; font-family:inherit;
+  }
+  .btn:hover{background:var(--surface-2);}
+  .btn:focus-visible, .icon-btn:focus-visible, input:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .btn-add-month{
+    display:block; width:100%; margin-top:16px; padding:12px; border:1px dashed var(--line);
+    background:transparent; color:var(--muted); border-radius:var(--radius); cursor:pointer;
+    font-size:14px; font-weight:600; font-family:inherit;
+  }
+  .btn-add-month:hover{color:var(--accent-ink); border-color:var(--accent);}
+
+  .notes{
+    margin-top:36px; padding-top:18px; border-top:1px solid var(--line);
+    color:var(--muted); font-size:12.5px; line-height:1.7;
+  }
+  .notes strong{color:var(--ink);}
+
+  @media (prefers-reduced-motion:no-preference){
+    .stat, .month-card{transition:box-shadow .15s ease;}
+  }
+</style>
+
+<div class="app">
+  <header class="masthead">
+    <p class="eyebrow">2026년 최저시급 기준 · 시간급 10,320원</p>
+    <h1>아르바이트 급여 계산기</h1>
+    <p class="lede">월별로 평일·토요일·일요일 근무시간을 입력하면 기본급, 주휴수당, 1년 이상 근무 시 퇴직금까지 자동으로 계산합니다.</p>
+  </header>
+
+  <div class="settings-bar">
+    <div class="field">
+      <label for="wage">시급 (원)</label>
+      <input type="number" id="wage" value="10320" step="10" min="0">
+    </div>
+    <div class="field">
+      <label for="startDate">근무 시작일</label>
+      <input type="date" id="startDate">
+    </div>
+    <div class="field">
+      <label for="asOfDate">기준일 (조회일 / 퇴사일)</label>
+      <input type="date" id="asOfDate">
+    </div>
+  </div>
+
+  <div class="summary-grid" id="summary"></div>
+
+  <div id="severanceWrap"></div>
+
+  <p class="section-title">월별 근무 내역</p>
+  <div class="months" id="months"></div>
+  <button class="btn-add-month" id="addMonth">+ 월 추가</button>
+
+  <div class="notes">
+    <p><strong>계산 기준</strong> — 주휴수당은 해당 주 근로시간이 15시간 이상이고 소정근로일에 결근이 없었다고 가정해 <em>(주 근로시간 ÷ 40) × 8 × 시급</em>으로 계산합니다(40시간 초과분은 8시간 한도로 반영). 퇴직금은 최근 입력된 3개월 임금을 그 기간의 달력일수로 나눈 평균임금을 기준으로 <em>평균임금 × 30 × (재직일수 ÷ 365)</em>로 추정합니다.</p>
+    <p>이 계산기는 참고용 추정치이며, 실제 지급액은 회사 취업규칙, 세금·4대보험 공제, 연장·야간근로수당 등에 따라 달라질 수 있습니다. 정확한 금액은 사업장 또는 고용노동부(국번없이 1350)에 확인하세요.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var state = { months: [] };
+  var monthSeq = 0;
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  }
+  function currentYm(){
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth()+1);
+  }
+  function daysInMonth(ym){
+    var parts = ym.split('-'); var y = +parts[0], m = +parts[1];
+    return new Date(y, m, 0).getDate();
+  }
+  function won(n){
+    return Math.round(n).toLocaleString('ko-KR') + '원';
+  }
+  function newWeek(){ return { weekday:0, sat:0, sun:0 }; }
+  function newMonth(ym){
+    return { id: 'm'+(monthSeq++), ym: ym, weeks: [newWeek(), newWeek(), newWeek(), newWeek()] };
+  }
+
+  function wage(){ return Math.max(0, +document.getElementById('wage').value || 0); }
+
+  function weekCalc(w){
+    var total = (+w.weekday||0) + (+w.sat||0) + (+w.sun||0);
+    var basePay = total * wage();
+    var eligible = total >= 15;
+    var holidayPay = eligible ? Math.min(total,40)/40 * 8 * wage() : 0;
+    return { total: total, basePay: basePay, eligible: eligible, holidayPay: holidayPay, weekTotal: basePay + holidayPay };
+  }
+
+  function monthCalc(m){
+    var hours=0, base=0, holiday=0;
+    m.weeks.forEach(function(w){
+      var c = weekCalc(w);
+      hours += c.total; base += c.basePay; holiday += c.holidayPay;
+    });
+    return { hours: hours, base: base, holiday: holiday, total: base + holiday };
+  }
+
+  function render(){
+    renderMonths();
+    renderSummary();
+    renderSeverance();
+  }
+
+  function renderMonths(){
+    var wrap = document.getElementById('months');
+    wrap.innerHTML = '';
+    state.months.forEach(function(m){
+      var mc = monthCalc(m);
+      var card = document.createElement('div');
+      card.className = 'panel month-card';
+
+      var head = document.createElement('div');
+      head.className = 'month-head';
+      head.innerHTML =
+        '<input type="month" value="'+m.ym+'" data-role="ym" data-month="'+m.id+'">' +
+        '<span class="month-total-inline">이번 달 합계 '+won(mc.total)+'</span>' +
+        '<button class="icon-btn" data-role="remove-month" data-month="'+m.id+'" title="이 달 삭제" aria-label="이 달 삭제">✕</button>';
+      card.appendChild(head);
+
+      var tableWrap = document.createElement('div');
+      tableWrap.className = 'table-wrap';
+      var table = document.createElement('table');
+      table.innerHTML =
+        '<thead><tr>' +
+        '<th>주차</th><th>평일(h)</th><th>토(h)</th><th>일(h)</th>' +
+        '<th>합계시간</th><th>기본급</th><th>주휴수당</th><th>주 합계</th><th></th>' +
+        '</tr></thead>';
+      var tbody = document.createElement('tbody');
+      m.weeks.forEach(function(w, idx){
+        var c = weekCalc(w);
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>'+(idx+1)+'주차</td>' +
+          '<td><input type="number" min="0" step="0.5" value="'+w.weekday+'" data-role="hours" data-field="weekday" data-month="'+m.id+'" data-week="'+idx+'"></td>' +
+          '<td><input type="number" min="0" step="0.5" value="'+w.sat+'" data-role="hours" data-field="sat" data-month="'+m.id+'" data-week="'+idx+'"></td>' +
+          '<td><input type="number" min="0" step="0.5" value="'+w.sun+'" data-role="hours" data-field="sun" data-month="'+m.id+'" data-week="'+idx+'"></td>' +
+          '<td class="derived">'+c.total+'h</td>' +
+          '<td>'+won(c.basePay)+'</td>' +
+          '<td>'+(c.eligible ? won(c.holidayPay) : '<span class="pill neutral">미해당</span>')+'</td>' +
+          '<td class="derived">'+won(c.weekTotal)+'</td>' +
+          '<td class="remove"><button class="icon-btn" data-role="remove-week" data-month="'+m.id+'" data-week="'+idx+'" title="이 주 삭제" aria-label="이 주 삭제">✕</button></td>';
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      card.appendChild(tableWrap);
+
+      var footer = document.createElement('div');
+      footer.className = 'card-footer';
+      footer.innerHTML =
+        '<button class="btn" data-role="add-week" data-month="'+m.id+'">+ 주 추가</button>' +
+        '<span style="font-size:13px;color:var(--muted);">이번 달 근무 '+mc.hours+'시간 · 주휴수당 '+won(mc.holiday)+'</span>';
+      card.appendChild(footer);
+
+      wrap.appendChild(card);
+    });
+  }
+
+  function renderSummary(){
+    var totalHours=0, totalBase=0, totalHoliday=0;
+    state.months.forEach(function(m){
+      var mc = monthCalc(m);
+      totalHours += mc.hours; totalBase += mc.base; totalHoliday += mc.holiday;
+    });
+    var grand = totalBase + totalHoliday;
+
+    var sd = document.getElementById('startDate').value;
+    var ad = document.getElementById('asOfDate').value || todayStr();
+    var tenureLabel = '—';
+    if(sd){
+      var days = Math.floor((new Date(ad) - new Date(sd)) / 86400000) + 1;
+      if(days > 0){
+        var y = Math.floor(days/365), rem = days%365, mo = Math.floor(rem/30);
+        tenureLabel = (y>0? y+'년 ':'') + mo+'개월';
+      }
+    }
+
+    var summary = document.getElementById('summary');
+    summary.innerHTML =
+      stat('총 근무시간', totalHours.toLocaleString('ko-KR'), 'h') +
+      stat('기본급 합계', won(totalBase), '', false) +
+      stat('주휴수당 합계', won(totalHoliday), '', false) +
+      stat('예상 총 지급액', won(grand), '', true) +
+      stat('근속기간', tenureLabel, sd ? '' : '시작일 입력 필요', false);
+
+    function stat(label, value, suffix, accent){
+      return '<div class="stat'+(accent?' accent':'')+'">' +
+        '<div class="label">'+label+'</div>' +
+        '<div class="value">'+value+(suffix?' <small>'+suffix+'</small>':'')+'</div>' +
+        '</div>';
+    }
+  }
+
+  function renderSeverance(){
+    var el = document.getElementById('severanceWrap');
+    var sd = document.getElementById('startDate').value;
+    if(!sd){
+      el.innerHTML =
+        '<div class="panel severance-panel">' +
+        '<div class="headline"><span style="font-weight:700;">퇴직금</span><span class="pill neutral">근무 시작일 입력 필요</span></div>' +
+        '<p style="margin:0;font-size:13px;color:var(--muted);">위 설정에서 근무 시작일을 입력하면 1년 이상 근속 여부와 예상 퇴직금이 표시됩니다.</p>' +
+        '</div>';
+      return;
+    }
+    var ad = document.getElementById('asOfDate').value || todayStr();
+    var tenureDays = Math.floor((new Date(ad) - new Date(sd)) / 86400000) + 1;
+
+    if(tenureDays < 365){
+      el.innerHTML =
+        '<div class="panel severance-panel">' +
+        '<div class="headline"><span style="font-weight:700;">퇴직금</span><span class="pill neutral">1년 미만 · 미해당</span></div>' +
+        '<div class="row"><span class="k">현재 근속일수</span><span class="v">'+tenureDays.toLocaleString('ko-KR')+'일</span></div>' +
+        '<div class="row"><span class="k">퇴직금 발생까지</span><span class="v">'+(365-tenureDays).toLocaleString('ko-KR')+'일 남음</span></div>' +
+        '</div>';
+      return;
+    }
+
+    var sorted = state.months.slice().sort(function(a,b){ return a.ym.localeCompare(b.ym); });
+    var last3 = sorted.slice(-3);
+    var sum3 = 0, days3 = 0;
+    last3.forEach(function(m){
+      sum3 += monthCalc(m).total;
+      days3 += daysInMonth(m.ym);
+    });
+    var avgDaily = days3 > 0 ? sum3 / days3 : 0;
+    var severance = avgDaily * 30 * (tenureDays/365);
+
+    el.innerHTML =
+      '<div class="panel severance-panel">' +
+      '<div class="headline"><span style="font-weight:700;">퇴직금 <span class="pill success">1년 이상 · 지급대상</span></span><span class="amount">'+won(severance)+'</span></div>' +
+      '<div class="row"><span class="k">근속일수</span><span class="v">'+tenureDays.toLocaleString('ko-KR')+'일</span></div>' +
+      '<div class="row"><span class="k">평균임금 산정 기간 ('+last3.length+'개월)</span><span class="v">'+(last3.map(function(m){return m.ym;}).join(', ')||'—')+'</span></div>' +
+      '<div class="row"><span class="k">해당 기간 총 지급액</span><span class="v">'+won(sum3)+'</span></div>' +
+      '<div class="row"><span class="k">해당 기간 달력일수</span><span class="v">'+days3.toLocaleString('ko-KR')+'일</span></div>' +
+      '<div class="row"><span class="k">1일 평균임금</span><span class="v">'+won(avgDaily)+'</span></div>' +
+      '<div class="row"><span class="k">계산식</span><span class="v" style="font-weight:400;color:var(--muted);">평균임금 × 30 × (재직일수÷365)</span></div>' +
+      '</div>';
+  }
+
+  // events
+  document.getElementById('wage').addEventListener('input', render);
+  document.getElementById('startDate').addEventListener('input', render);
+  document.getElementById('asOfDate').addEventListener('input', render);
+
+  document.getElementById('addMonth').addEventListener('click', function(){
+    var ym = state.months.length ? incrementYm(state.months[state.months.length-1].ym) : currentYm();
+    state.months.push(newMonth(ym));
+    render();
+  });
+
+  function incrementYm(ym){
+    var parts = ym.split('-'); var y = +parts[0], m = +parts[1];
+    m++; if(m>12){ m=1; y++; }
+    return y + '-' + pad(m);
+  }
+
+  document.getElementById('months').addEventListener('click', function(e){
+    var t = e.target.closest('[data-role]');
+    if(!t) return;
+    var role = t.getAttribute('data-role');
+    if(role === 'remove-month'){
+      var mid = t.getAttribute('data-month');
+      state.months = state.months.filter(function(m){ return m.id !== mid; });
+      render();
+    } else if(role === 'add-week'){
+      var mid2 = t.getAttribute('data-month');
+      var m2 = state.months.find(function(m){ return m.id === mid2; });
+      if(m2) m2.weeks.push(newWeek());
+      render();
+    } else if(role === 'remove-week'){
+      var mid3 = t.getAttribute('data-month');
+      var widx = +t.getAttribute('data-week');
+      var m3 = state.months.find(function(m){ return m.id === mid3; });
+      if(m3 && m3.weeks.length > 1) m3.weeks.splice(widx,1);
+      render();
+    }
+  });
+
+  document.getElementById('months').addEventListener('input', function(e){
+    var t = e.target;
+    var role = t.getAttribute('data-role');
+    if(role === 'hours'){
+      var mid = t.getAttribute('data-month');
+      var widx = +t.getAttribute('data-week');
+      var field = t.getAttribute('data-field');
+      var m = state.months.find(function(mm){ return mm.id === mid; });
+      if(m){
+        m.weeks[widx][field] = +t.value || 0;
+        render();
+        // restore focus after re-render
+        var sel = document.querySelector('[data-role="hours"][data-month="'+mid+'"][data-week="'+widx+'"][data-field="'+field+'"]');
+        if(sel){ sel.focus(); var v=sel.value; sel.value=''; sel.value=v; }
+      }
+    } else if(role === 'ym'){
+      var mid2 = t.getAttribute('data-month');
+      var m2 = state.months.find(function(mm){ return mm.id === mid2; });
+      if(m2 && t.value) m2.ym = t.value;
+      renderSummary(); renderSeverance();
+      var headSpan = t.parentElement.querySelector('.month-total-inline');
+    }
+  });
+
+  // init
+  document.getElementById('asOfDate').value = todayStr();
+  state.months.push(newMonth(currentYm()));
+  render();
+})();
+</script>
