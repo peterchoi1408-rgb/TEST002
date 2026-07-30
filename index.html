@@ -90,6 +90,14 @@
   .field input:focus{outline:none;}
   .field input[type="number"]{font-weight:700;}
 
+  .seg{display:flex; gap:4px; background:var(--surface-2); border-radius:8px; padding:3px;}
+  .seg-btn{
+    flex:1; border:none; background:transparent; color:var(--muted); font-size:13px;
+    font-weight:600; padding:6px 8px; border-radius:6px; cursor:pointer; font-family:inherit;
+  }
+  .seg-btn.active{background:var(--surface); color:var(--accent-ink); box-shadow:var(--shadow);}
+  .seg-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
   .summary-grid{
     display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px;
     margin-bottom:28px;
@@ -201,6 +209,13 @@
       <input type="number" id="wage" value="10320" step="10" min="0">
     </div>
     <div class="field">
+      <label>사업장 규모</label>
+      <div class="seg" id="bizSizeSeg" role="group" aria-label="사업장 규모">
+        <button type="button" class="seg-btn active" data-role="bizsize" data-value="under5" aria-pressed="true">5인 미만</button>
+        <button type="button" class="seg-btn" data-role="bizsize" data-value="over5" aria-pressed="false">5인 이상</button>
+      </div>
+    </div>
+    <div class="field">
       <label for="startDate">근무 시작일</label>
       <input type="date" id="startDate">
     </div>
@@ -219,14 +234,14 @@
   <button class="btn-add-month" id="addMonth">+ 월 추가</button>
 
   <div class="notes">
-    <p><strong>계산 기준</strong> — 주휴수당은 해당 주 근로시간이 15시간 이상이고 소정근로일에 결근이 없었다고 가정해 <em>(주 근로시간 ÷ 40) × 8 × 시급</em>으로 계산합니다(40시간 초과분은 8시간 한도로 반영). 퇴직금은 최근 입력된 3개월 임금을 그 기간의 달력일수로 나눈 평균임금을 기준으로 <em>평균임금 × 30 × (재직일수 ÷ 365)</em>로 추정합니다.</p>
+    <p><strong>계산 기준</strong> — 주휴수당은 해당 주 근로시간이 15시간 이상이고 소정근로일에 결근이 없었다고 가정해 <em>(주 근로시간 ÷ 40) × 8 × 시급</em>으로 계산합니다(40시간 초과분은 8시간 한도로 반영). 가산수당(연장·휴일근로 50%)은 <strong>5인 이상 사업장</strong>에만 적용하며, 평일·토요일 합계 중 주 40시간 초과분을 연장근로로, 일요일 근무시간 전체를 휴일근로로 간주해 계산합니다. 5인 미만 사업장은 근로기준법 제56조 적용 제외로 가산수당 없이 시급만 적용되며, 주휴수당·퇴직금은 사업장 규모와 무관하게 동일하게 적용됩니다. 퇴직금은 최근 입력된 3개월 임금을 그 기간의 달력일수로 나눈 평균임금을 기준으로 <em>평균임금 × 30 × (재직일수 ÷ 365)</em>로 추정합니다.</p>
     <p>이 계산기는 참고용 추정치이며, 실제 지급액은 회사 취업규칙, 세금·4대보험 공제, 연장·야간근로수당 등에 따라 달라질 수 있습니다. 정확한 금액은 사업장 또는 고용노동부(국번없이 1350)에 확인하세요.</p>
   </div>
 </div>
 
 <script>
 (function(){
-  var state = { months: [] };
+  var state = { months: [], bizSize: 'under5' };
   var monthSeq = 0;
 
   function pad(n){ return String(n).padStart(2,'0'); }
@@ -251,22 +266,39 @@
   }
 
   function wage(){ return Math.max(0, +document.getElementById('wage').value || 0); }
+  function isOver5(){ return state.bizSize === 'over5'; }
 
   function weekCalc(w){
-    var total = (+w.weekday||0) + (+w.sat||0) + (+w.sun||0);
+    var weekday = +w.weekday||0, sat = +w.sat||0, sun = +w.sun||0;
+    var total = weekday + sat + sun;
     var basePay = total * wage();
+
+    // 연장근로(주 40시간 초과분: 평일+토요일 기준) + 휴일근로(일요일 전체)는
+    // 5인 이상 사업장에서만 50% 가산수당이 적용됨(근로기준법 제56조, 5인 미만 사업장 적용 제외).
+    var otHours = Math.max(0, (weekday + sat) - 40);
+    var holidayWorkHours = sun;
+    var premiumHours = isOver5() ? (otHours + holidayWorkHours) : 0;
+    var premiumPay = premiumHours * wage() * 0.5;
+
+    // 주휴수당(제55조)은 사업장 규모와 무관하게 동일 적용됨.
     var eligible = total >= 15;
     var holidayPay = eligible ? Math.min(total,40)/40 * 8 * wage() : 0;
-    return { total: total, basePay: basePay, eligible: eligible, holidayPay: holidayPay, weekTotal: basePay + holidayPay };
+
+    return {
+      total: total, basePay: basePay,
+      otHours: otHours, holidayWorkHours: holidayWorkHours, premiumHours: premiumHours, premiumPay: premiumPay,
+      eligible: eligible, holidayPay: holidayPay,
+      weekTotal: basePay + premiumPay + holidayPay
+    };
   }
 
   function monthCalc(m){
-    var hours=0, base=0, holiday=0;
+    var hours=0, base=0, premium=0, holiday=0;
     m.weeks.forEach(function(w){
       var c = weekCalc(w);
-      hours += c.total; base += c.basePay; holiday += c.holidayPay;
+      hours += c.total; base += c.basePay; premium += c.premiumPay; holiday += c.holidayPay;
     });
-    return { hours: hours, base: base, holiday: holiday, total: base + holiday };
+    return { hours: hours, base: base, premium: premium, holiday: holiday, total: base + premium + holiday };
   }
 
   function render(){
@@ -297,7 +329,7 @@
       table.innerHTML =
         '<thead><tr>' +
         '<th>주차</th><th>평일(h)</th><th>토(h)</th><th>일(h)</th>' +
-        '<th>합계시간</th><th>기본급</th><th>주휴수당</th><th>주 합계</th><th></th>' +
+        '<th>합계시간</th><th>기본급</th><th>가산수당</th><th>주휴수당</th><th>주 합계</th><th></th>' +
         '</tr></thead>';
       var tbody = document.createElement('tbody');
       m.weeks.forEach(function(w, idx){
@@ -310,6 +342,7 @@
           '<td><input type="number" min="0" step="0.5" value="'+w.sun+'" data-role="hours" data-field="sun" data-month="'+m.id+'" data-week="'+idx+'"></td>' +
           '<td class="derived">'+c.total+'h</td>' +
           '<td>'+won(c.basePay)+'</td>' +
+          '<td>'+(c.premiumHours>0 ? won(c.premiumPay) : '<span class="pill neutral">해당없음</span>')+'</td>' +
           '<td>'+(c.eligible ? won(c.holidayPay) : '<span class="pill neutral">미해당</span>')+'</td>' +
           '<td class="derived">'+won(c.weekTotal)+'</td>' +
           '<td class="remove"><button class="icon-btn" data-role="remove-week" data-month="'+m.id+'" data-week="'+idx+'" title="이 주 삭제" aria-label="이 주 삭제">✕</button></td>';
@@ -323,7 +356,7 @@
       footer.className = 'card-footer';
       footer.innerHTML =
         '<button class="btn" data-role="add-week" data-month="'+m.id+'">+ 주 추가</button>' +
-        '<span style="font-size:13px;color:var(--muted);">이번 달 근무 '+mc.hours+'시간 · 주휴수당 '+won(mc.holiday)+'</span>';
+        '<span style="font-size:13px;color:var(--muted);">이번 달 근무 '+mc.hours+'시간 · 가산수당 '+won(mc.premium)+' · 주휴수당 '+won(mc.holiday)+'</span>';
       card.appendChild(footer);
 
       wrap.appendChild(card);
@@ -331,12 +364,12 @@
   }
 
   function renderSummary(){
-    var totalHours=0, totalBase=0, totalHoliday=0;
+    var totalHours=0, totalBase=0, totalPremium=0, totalHoliday=0;
     state.months.forEach(function(m){
       var mc = monthCalc(m);
-      totalHours += mc.hours; totalBase += mc.base; totalHoliday += mc.holiday;
+      totalHours += mc.hours; totalBase += mc.base; totalPremium += mc.premium; totalHoliday += mc.holiday;
     });
-    var grand = totalBase + totalHoliday;
+    var grand = totalBase + totalPremium + totalHoliday;
 
     var sd = document.getElementById('startDate').value;
     var ad = document.getElementById('asOfDate').value || todayStr();
@@ -353,6 +386,7 @@
     summary.innerHTML =
       stat('총 근무시간', totalHours.toLocaleString('ko-KR'), 'h') +
       stat('기본급 합계', won(totalBase), '', false) +
+      stat('가산수당 합계', won(totalPremium), isOver5() ? '' : '5인 이상만 적용', false) +
       stat('주휴수당 합계', won(totalHoliday), '', false) +
       stat('예상 총 지급액', won(grand), '', true) +
       stat('근속기간', tenureLabel, sd ? '' : '시작일 입력 필요', false);
@@ -412,6 +446,18 @@
   }
 
   // events
+  document.getElementById('bizSizeSeg').addEventListener('click', function(e){
+    var t = e.target.closest('[data-role="bizsize"]');
+    if(!t) return;
+    state.bizSize = t.getAttribute('data-value');
+    document.querySelectorAll('#bizSizeSeg .seg-btn').forEach(function(btn){
+      var active = btn === t;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    render();
+  });
+
   document.getElementById('wage').addEventListener('input', render);
   document.getElementById('startDate').addEventListener('input', render);
   document.getElementById('asOfDate').addEventListener('input', render);
